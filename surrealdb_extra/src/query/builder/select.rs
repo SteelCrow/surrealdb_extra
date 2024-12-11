@@ -36,11 +36,6 @@
 //!
 //! ## Click on the struct for more info
 
-use std::marker::PhantomData;
-use surrealdb::{Connection, Surreal};
-use surrealdb::method::Query;
-use surrealdb::sql::{Explain, Fetchs, Groups, Idioms, Orders, Splits};
-use surrealdb::sql::statements::SelectStatement;
 use crate::query::parsing::cond::ExtraCond;
 use crate::query::parsing::fetch::ExtraFetch;
 use crate::query::parsing::field::ExtraField;
@@ -55,6 +50,11 @@ use crate::query::parsing::version::ExtraVersion;
 use crate::query::parsing::what::ExtraValue;
 use crate::query::parsing::with::ExtraWith;
 use crate::query::states::{FilledCond, FilledFields, FilledWhat, NoCond, NoFields, NoWhat};
+use std::marker::PhantomData;
+use surrealdb::method::Query;
+use surrealdb::sql::statements::SelectStatement;
+use surrealdb::sql::{Explain, Fetchs, Groups, Idioms, OrderList, Ordering, Splits};
+use surrealdb::{Connection, Surreal};
 
 #[derive(Debug, Clone, Default)]
 pub struct SelectBuilder<W, F, C> {
@@ -192,7 +192,10 @@ impl SelectBuilder<FilledWhat, FilledFields, NoCond> {
     /// ## The fastest way to query is to use the string format for conditions at least from benchmarks
     ///
     /// You can also use the Cond/Value type inside surrealdb for more complex requests
-    pub fn condition(self, cond: impl Into<ExtraCond>) -> SelectBuilder<FilledWhat, FilledFields, FilledCond> {
+    pub fn condition(
+        self,
+        cond: impl Into<ExtraCond>,
+    ) -> SelectBuilder<FilledWhat, FilledFields, FilledCond> {
         let Self { mut statement, .. } = self;
 
         let cond = cond.into().0;
@@ -206,7 +209,6 @@ impl SelectBuilder<FilledWhat, FilledFields, NoCond> {
             cond_state: Default::default(),
         }
     }
-
 }
 
 impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
@@ -214,9 +216,7 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
     pub fn omit(self, omit: impl Into<ExtraOmit>) -> Self {
         let Self { mut statement, .. } = self;
 
-        let mut omits = statement.omit.unwrap_or(
-            Idioms::default()
-        );
+        let mut omits = statement.omit.unwrap_or(Idioms::default());
 
         omits.0.push(omit.into().0);
 
@@ -248,9 +248,7 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
     pub fn split(self, split: impl Into<ExtraSplit>) -> Self {
         let Self { mut statement, .. } = self;
 
-        let mut splits = statement.split.unwrap_or(
-            Splits::default()
-        );
+        let mut splits = statement.split.unwrap_or(Splits::default());
 
         splits.0.push(split.into().0);
 
@@ -268,9 +266,7 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
     pub fn group(self, group: impl Into<ExtraGroup>) -> Self {
         let Self { mut statement, .. } = self;
 
-        let mut groups = statement.group.unwrap_or(
-            Groups::default()
-        );
+        let mut groups = statement.group.unwrap_or(Groups::default());
 
         groups.0.push(group.into().0);
 
@@ -283,7 +279,6 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
             cond_state: Default::default(),
         }
     }
-
 
     /// This function orders the rows
     ///
@@ -303,11 +298,13 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
     pub fn order(self, order: impl Into<ExtraOrder>) -> Self {
         let Self { mut statement, .. } = self;
 
-        let mut orders = statement.order.unwrap_or(
-            Orders::default()
-        );
+        let mut orders = statement
+            .order
+            .unwrap_or(Ordering::Order(OrderList::default()));
 
-        orders.0.push(order.into().0);
+        if let Ordering::Order(list) = &mut orders {
+            list.0.push(order.into().0)
+        }
 
         statement.order = Some(orders);
 
@@ -373,9 +370,7 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
     pub fn fetch(self, fetch: impl Into<ExtraFetch>) -> Self {
         let Self { mut statement, .. } = self;
 
-        let mut fetches = statement.fetch.unwrap_or(
-            Fetchs::default()
-        );
+        let mut fetches = statement.fetch.unwrap_or(Fetchs::default());
 
         fetches.0.push(fetch.into().0);
 
@@ -483,10 +478,10 @@ impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use surrealdb::opt::IntoQuery;
     use surrealdb::sql::Thing;
     use surrealdb::sql::{Field, Idiom, Value};
-    use super::*;
 
     #[test]
     fn select_table() {
@@ -508,7 +503,9 @@ mod test {
 
     #[test]
     fn select_all_field() {
-        let select = SelectBuilder::new().what(Thing::from(("test", "test"))).field(Field::All);
+        let select = SelectBuilder::new()
+            .what(Thing::from(("test", "test")))
+            .field(Field::All);
 
         let query = select.statement.into_query();
 
@@ -517,7 +514,9 @@ mod test {
 
     #[test]
     fn select_str_fields() {
-        let select = SelectBuilder::new().what(Thing::from(("test", "test"))).field("test");
+        let select = SelectBuilder::new()
+            .what(Thing::from(("test", "test")))
+            .field("test");
 
         let query = select.statement.into_query();
 
@@ -526,7 +525,9 @@ mod test {
 
     #[test]
     fn select_string_fields() {
-        let select = SelectBuilder::new().what("test").field("field.test".to_string());
+        let select = SelectBuilder::new()
+            .what("test")
+            .field("field.test".to_string());
 
         let query = select.statement.into_query();
 
@@ -535,7 +536,9 @@ mod test {
 
     #[test]
     fn select_str_alias_fields() {
-        let select = SelectBuilder::new().what("test").field(("field.test", "test"));
+        let select = SelectBuilder::new()
+            .what("test")
+            .field(("field.test", "test"));
 
         let query = select.statement.into_query();
 
@@ -544,7 +547,9 @@ mod test {
 
     #[test]
     fn select_string_alias_fields() {
-        let select = SelectBuilder::new().what("test").field(("field.test".to_string(), "test".to_string()));
+        let select = SelectBuilder::new()
+            .what("test")
+            .field(("field.test".to_string(), "test".to_string()));
 
         let query = select.statement.into_query();
 
@@ -553,7 +558,6 @@ mod test {
 
     #[test]
     fn select_field_with_fields_type() {
-
         let field = Field::Single {
             expr: Value::Idiom(Idiom::from("test".to_string())),
             alias: None,
@@ -567,13 +571,15 @@ mod test {
     }
     #[test]
     fn select_field_with_cond() {
-
         let field = Field::Single {
             expr: Value::Idiom(Idiom::from("test".to_string())),
             alias: None,
         };
 
-        let select = SelectBuilder::new().what("test").field(field).condition("test");
+        let select = SelectBuilder::new()
+            .what("test")
+            .field(field)
+            .condition("test");
 
         let query = select.statement.into_query();
 

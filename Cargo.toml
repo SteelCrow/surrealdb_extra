@@ -8,7 +8,11 @@ members = [
 ]
 
 [workspace.dependencies]
-surrealdb = { package = "surrealdb", version = "2.0.2" }
+surrealdb = { package = "surrealdb", version = ">=2.1" }
+
+[patch.crates-io]
+# Override surrealdb with the Git repository
+surrealdb = { package = "surrealdb", git = "https://github.com/SteelCrow/surrealdb.git" }
 
 [workspace.package]
 version = "0.10.2"

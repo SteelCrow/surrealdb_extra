@@ -16,7 +16,7 @@ surrealdb_extra_derive = { version = "0.10.2", path = "../surrealdb_extra_derive
 async-trait = "0.1.83"
 surrealdb = { workspace = true }
 serde = { version = "1.0.195", features = ["derive"] }
-thiserror = "1.0.62"
+thiserror = "2.0.6"
 anyhow = "1.0.86"
 chrono = "0.4.38"
 paste = { version = "1.0.15", optional = true }

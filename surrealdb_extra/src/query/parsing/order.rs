@@ -1,16 +1,16 @@
-use surrealdb::sql::{Idiom, Order};
 use crate::query::parsing::idiom::ExtraIdiom;
+use surrealdb::sql::{Idiom, Order};
 
 pub enum OrderDirection {
     ASC,
-    DESC
+    DESC,
 }
 
 impl OrderDirection {
     pub fn to_bool(&self) -> bool {
         match self {
             Self::ASC => true,
-            Self::DESC => false
+            Self::DESC => false,
         }
     }
 }
@@ -30,8 +30,7 @@ impl From<(&str, OrderDirection)> for ExtraOrder {
         let direction = value.1.to_bool();
 
         let mut order = Order::default();
-        order.order = idiom.0;
-        order.random = false;
+        order.value = idiom.0;
         order.collate = false;
         order.numeric = false;
         order.direction = direction;
@@ -46,8 +45,7 @@ impl From<(String, OrderDirection)> for ExtraOrder {
         let direction = value.1.to_bool();
 
         let mut order = Order::default();
-        order.order = idiom.0;
-        order.random = false;
+        order.value = idiom.0;
         order.collate = false;
         order.numeric = false;
         order.direction = direction;
@@ -61,8 +59,7 @@ impl From<(Idiom, OrderDirection)> for ExtraOrder {
         let direction = value.1.to_bool();
 
         let mut order = Order::default();
-        order.order = value.0;
-        order.random = false;
+        order.value = value.0;
         order.collate = false;
         order.numeric = false;
         order.direction = direction;
