@@ -1,9 +1,9 @@
 mod condition;
 
-use std::collections::VecDeque;
-use surrealdb::sql::{Cond, Value, Expression};
-use crate::query::parsing::str_to_value;
 pub use super::cond::condition::Condition;
+use crate::query::parsing::str_to_value;
+use std::collections::VecDeque;
+use surrealdb::sql::{Cond, Expression, Value};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExtraCond(pub Cond);
@@ -67,8 +67,8 @@ impl From<VecDeque<Condition>> for ExtraCond {
         let mut cond = Cond::default();
 
         if value.is_empty() {
-            cond.0 = Value::Null;
-            return Self(cond)
+            cond.0 = Value::None;
+            return Self(cond);
         }
 
         let l = value.pop_front().unwrap_or_default().to_value();
@@ -92,7 +92,7 @@ impl From<VecDeque<Condition>> for ExtraCond {
             expr = Expression::Binary {
                 l: Value::Expression(expr.into()),
                 o,
-                r: v
+                r: v,
             };
         }
 
@@ -114,12 +114,12 @@ impl From<Condition> for ExtraCond {
 
 #[cfg(test)]
 mod test {
+    use crate::query::select::SelectBuilder;
+    use crate::{cond_vec, op};
     use serde::{Deserialize, Serialize};
     use surrealdb::sql::Thing;
-    use surrealdb::{engine::any::connect, sql::Part};
     use surrealdb::sql::{Field, Operator};
-    use crate::{cond_vec, op};
-    use crate::query::select::SelectBuilder;
+    use surrealdb::{engine::any::connect, sql::Part};
 
     use crate::table::Table;
 
@@ -130,7 +130,7 @@ mod test {
     pub struct Test {
         id: Option<Thing>,
         name: String,
-        n: i64
+        n: i64,
     }
 
     #[tokio::test]
@@ -154,13 +154,21 @@ mod test {
         let _ = t1.clone().create(&db).await.unwrap();
         let _ = t2.clone().create(&db).await.unwrap();
 
-        let q = db.query("SELECT name, n FROM test WHERE n > $num").bind(("num", 9));
+        let q = db
+            .query("SELECT name, n FROM test WHERE n > $num")
+            .bind(("num", 9));
         let mut res = q.await.unwrap();
         let vec1_t: Vec<Test> = res.take(0).unwrap();
 
         assert_eq!(vec1_t.len(), 1);
 
-        let select = SelectBuilder::new().what(Test::TABLE_NAME).field("name").field("n").condition(cond_vec![("n", Operator::MoreThan, "$num")]).to_query(&db).bind(("num", 9));
+        let select = SelectBuilder::new()
+            .what(Test::TABLE_NAME)
+            .field("name")
+            .field("n")
+            .condition(cond_vec![("n", Operator::MoreThan, "$num")])
+            .to_query(&db)
+            .bind(("num", 9));
         let mut select_res = select.await.unwrap();
         let vec2_t: Vec<Test> = select_res.take(0).unwrap();
 
@@ -197,19 +205,23 @@ mod test {
         let _ = t2.clone().create(&db).await.unwrap();
         let _ = t3.clone().create(&db).await.unwrap();
 
-        let select = SelectBuilder::new().what(Test::TABLE_NAME).field(Field::All).condition(cond_vec![
-            ("name", Operator::Equal, "$name"),
+        let select = SelectBuilder::new()
+            .what(Test::TABLE_NAME)
+            .field(Field::All)
+            .condition(cond_vec![
+                ("name", Operator::Equal, "$name"),
                 Operator::And,
-            ("n", Operator::MoreThan, "$n"),
+                ("n", Operator::MoreThan, "$n"),
                 Operator::And,
-            ("n", Operator::MoreThan, "$n"),
+                ("n", Operator::MoreThan, "$n"),
                 Operator::And,
-            ("n", Operator::MoreThan, "$n"),
+                ("n", Operator::MoreThan, "$n"),
                 Operator::And,
-            ("n", Operator::MoreThan, "$n"),
+                ("n", Operator::MoreThan, "$n"),
                 Operator::And,
-            ("n", Operator::MoreThan, "$n"),
-        ]).to_query(&db)
+                ("n", Operator::MoreThan, "$n"),
+            ])
+            .to_query(&db)
             .bind(("name", "test"))
             .bind(("n", 3));
 
@@ -224,9 +236,9 @@ mod test {
     fn from_str() {
         let field = "test";
 
-        let idiom = match ExtraCond::from(field).0.0 {
+        let idiom = match ExtraCond::from(field).0 .0 {
             Value::Idiom(i) => i,
-            _ => return assert!(false)
+            _ => return assert!(false),
         };
 
         assert_eq!(idiom.0.first().unwrap().clone(), Part::from(field))
@@ -236,9 +248,9 @@ mod test {
     fn from_string() {
         let field = "test".to_string();
 
-        let idiom = match ExtraCond::from(field.clone()).0.0 {
+        let idiom = match ExtraCond::from(field.clone()).0 .0 {
             Value::Idiom(i) => i,
-            _ => return assert!(false)
+            _ => return assert!(false),
         };
 
         assert_eq!(idiom.0.first().unwrap().clone(), Part::from(field))
@@ -247,7 +259,7 @@ mod test {
     #[test]
     fn cond_from_str() {
         let cond1 = ExtraCond::from("test > test2 AND !test3");
-        let cond2  = cond_vec![("test", op!(>), "test2"), op!(and), (op!(!), "test3")];
+        let cond2 = cond_vec![("test", op!(>), "test2"), op!(and), (op!(!), "test3")];
 
         assert_eq!(cond1, cond2);
     }
