@@ -6,11 +6,11 @@ use std::collections::VecDeque;
 use surrealdb::sql::{Cond, Expression, Value};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExtraCond(pub Cond);
+pub struct ExtraCond(pub Option<Cond>);
 
 impl From<Cond> for ExtraCond {
     fn from(value: Cond) -> Self {
-        Self(value)
+        Self(Some(value))
     }
 }
 
@@ -19,7 +19,7 @@ impl From<Value> for ExtraCond {
         let mut cond = Cond::default();
         cond.0 = value;
 
-        Self(cond)
+        Self(Some(cond))
     }
 }
 
@@ -28,7 +28,7 @@ impl From<Expression> for ExtraCond {
         let mut cond = Cond::default();
         cond.0 = Value::Expression(Box::new(value));
 
-        Self(cond)
+        Self(Some(cond))
     }
 }
 
@@ -39,7 +39,7 @@ impl From<&str> for ExtraCond {
         let mut cond = Cond::default();
         cond.0 = val;
 
-        Self(cond)
+        Self(Some(cond))
     }
 }
 
@@ -50,7 +50,7 @@ impl From<String> for ExtraCond {
         let mut cond = Cond::default();
         cond.0 = val;
 
-        Self(cond)
+        Self(Some(cond))
     }
 }
 
@@ -67,15 +67,14 @@ impl From<VecDeque<Condition>> for ExtraCond {
         let mut cond = Cond::default();
 
         if value.is_empty() {
-            cond.0 = Value::None;
-            return Self(cond);
+            return Self(None);
         }
 
         let l = value.pop_front().unwrap_or_default().to_value();
 
         if value.is_empty() {
             cond.0 = l;
-            return Self(cond);
+            return Self(Some(cond));
         }
 
         let o = value.pop_front().unwrap_or_default().to_operator();
@@ -97,7 +96,7 @@ impl From<VecDeque<Condition>> for ExtraCond {
         }
 
         cond.0 = Value::Expression(Box::new(expr));
-        Self(cond)
+        Self(Some(cond))
     }
 }
 
@@ -108,7 +107,7 @@ impl From<Condition> for ExtraCond {
         let mut cond = Cond::default();
         cond.0 = val;
 
-        Self(cond)
+        Self(Some(cond))
     }
 }
 

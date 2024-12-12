@@ -1,7 +1,7 @@
-use surrealdb::sql::statements::SelectStatement;
-use surrealdb::sql::{Expression, Operator, Subquery, Value};
 use crate::query::parsing::cond::ExtraCond;
 use crate::query::parsing::str_to_value;
+use surrealdb::sql::statements::SelectStatement;
+use surrealdb::sql::{Expression, Operator, Subquery, Value};
 
 #[derive(Debug, Clone, Default)]
 pub enum Condition {
@@ -19,36 +19,32 @@ pub enum Condition {
 impl Condition {
     pub fn to_value(self) -> Value {
         match self {
-            Condition::Value(k) => { k }
+            Condition::Value(k) => k,
             Condition::ValOpVal(l, o, r) => {
-                Value::Expression(
-                    Expression::Binary { l, o, r }.into()
-                )
+                Value::Expression(Expression::Binary { l, o, r }.into())
             }
-            Condition::OperatorValue(o, v) => {
-                Value::Expression(
-                    Expression::Unary { o, v }.into()
-                )
-            }
-            Condition::SubCond(v) => {
-                Value::Subquery(Box::new(Subquery::Value(v.0.0)))
-            }
-            Condition::Subquery(v) => {
-                Value::Subquery(Box::new(v))
-            }
-            _ => { Value::Null }
+            Condition::OperatorValue(o, v) => Value::Expression(Expression::Unary { o, v }.into()),
+            Condition::SubCond(v) => match v.0 {
+                Some(v) => Value::Subquery(Box::new(Subquery::Value(v.0))),
+                None => Value::Null,
+            },
+            Condition::Subquery(v) => Value::Subquery(Box::new(v)),
+            _ => Value::Null,
         }
     }
 
     pub fn to_operator(self) -> Operator {
         match self {
-            Condition::Operator(o) => { o }
-            _ => { Operator::default() }
+            Condition::Operator(o) => o,
+            _ => Operator::default(),
         }
     }
 
     pub fn is_value(&self) -> bool {
-        matches!(self, Condition::Value(..) | Condition::ValOpVal(..) | Condition::OperatorValue(..))
+        matches!(
+            self,
+            Condition::Value(..) | Condition::ValOpVal(..) | Condition::OperatorValue(..)
+        )
     }
     pub fn is_operator(&self) -> bool {
         matches!(self, Condition::Operator(_))
@@ -59,7 +55,6 @@ macro_rules! create_from_condition_strings {
     ($l:ty, $r:ty) => {
         impl From<($l, Operator, $r)> for Condition {
             fn from(value: ($l, Operator, $r)) -> Self {
-
                 let l = str_to_value(value.0);
                 let o = value.1;
                 let r = str_to_value(value.2);
@@ -74,7 +69,6 @@ macro_rules! create_from_condition_string_value {
     ($l:ty) => {
         impl From<($l, Operator, Value)> for Condition {
             fn from(value: ($l, Operator, Value)) -> Self {
-
                 let l = str_to_value(value.0);
                 let o = value.1;
 
@@ -88,7 +82,6 @@ macro_rules! create_from_condition_string_select {
     ($l:ty) => {
         impl From<($l, Operator, SelectStatement)> for Condition {
             fn from(value: ($l, Operator, SelectStatement)) -> Self {
-
                 let l = str_to_value(value.0);
                 let o = value.1;
                 let r = Value::Subquery(Box::new(Subquery::Select(value.2)));
@@ -103,7 +96,6 @@ macro_rules! create_from_condition_value_string {
     ($r:ty) => {
         impl From<(Value, Operator, $r)> for Condition {
             fn from(value: (Value, Operator, $r)) -> Self {
-
                 let o = value.1;
                 let r = str_to_value(value.2);
 
@@ -157,7 +149,6 @@ impl From<Value> for Condition {
 
 impl From<(Operator, &str)> for Condition {
     fn from(value: (Operator, &str)) -> Self {
-
         let val = str_to_value(value.1);
 
         Self::OperatorValue(value.0, val)
@@ -166,7 +157,6 @@ impl From<(Operator, &str)> for Condition {
 
 impl From<(Operator, String)> for Condition {
     fn from(value: (Operator, String)) -> Self {
-
         let val = str_to_value(value.1);
 
         Self::OperatorValue(value.0, val)
@@ -181,7 +171,6 @@ impl From<(Operator, Value)> for Condition {
 
 impl From<(Value, Operator, Value)> for Condition {
     fn from(value: (Value, Operator, Value)) -> Self {
-
         let o = value.1;
 
         Self::ValOpVal(value.0, o, value.2)
@@ -190,7 +179,6 @@ impl From<(Value, Operator, Value)> for Condition {
 
 impl From<(Value, Operator, SelectStatement)> for Condition {
     fn from(value: (Value, Operator, SelectStatement)) -> Self {
-
         let o = value.1;
         let r = Value::Subquery(Box::new(Subquery::Select(value.2)));
 
@@ -223,8 +211,8 @@ macro_rules! cond_vec {
 mod test {
     use super::*;
 
-    use crate::query::parsing::cond::ExtraCond;
     use crate::op;
+    use crate::query::parsing::cond::ExtraCond;
 
     #[test]
     fn from_condition() {
@@ -245,11 +233,21 @@ mod test {
 
     #[test]
     fn condition5() {
-        let cond1 = cond_vec!["cond1", op!(and), (op!(!), "test"), op!(or), ("test", op!(!=), "$test")];
-        let cond2 = cond_vec!["cond1", op!(AND), "!test", op!(Or), ("test", op!(NotEqual), "$test")];
+        let cond1 = cond_vec![
+            "cond1",
+            op!(and),
+            (op!(!), "test"),
+            op!(or),
+            ("test", op!(!=), "$test")
+        ];
+        let cond2 = cond_vec![
+            "cond1",
+            op!(AND),
+            "!test",
+            op!(Or),
+            ("test", op!(NotEqual), "$test")
+        ];
 
         assert_eq!(cond1, cond2);
     }
-
-
 }

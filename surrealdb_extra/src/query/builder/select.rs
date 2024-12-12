@@ -198,9 +198,7 @@ impl SelectBuilder<FilledWhat, FilledFields, NoCond> {
     ) -> SelectBuilder<FilledWhat, FilledFields, FilledCond> {
         let Self { mut statement, .. } = self;
 
-        let cond = cond.into().0;
-
-        statement.cond = Some(cond);
+        statement.cond = cond.into().0;
 
         SelectBuilder {
             statement,

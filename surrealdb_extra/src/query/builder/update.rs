@@ -1,9 +1,3 @@
-use std::marker::PhantomData;
-use serde::Serialize;
-use surrealdb::sql::statements::UpdateStatement;
-use surrealdb::{Connection, Surreal};
-use surrealdb::method::Query;
-use surrealdb::sql::{Data, to_value};
 use crate::query::parsing::cond::ExtraCond;
 use crate::query::parsing::data::ExtraData;
 use crate::query::parsing::output::ExtraOutput;
@@ -12,7 +6,12 @@ use crate::query::parsing::timeout::ExtraTimeout;
 use crate::query::parsing::unset_expression::UnsetExpression;
 use crate::query::parsing::what::ExtraValue;
 use crate::query::states::{FilledCond, FilledData, FilledWhat, NoCond, NoData, NoWhat};
-
+use serde::Serialize;
+use std::marker::PhantomData;
+use surrealdb::method::Query;
+use surrealdb::sql::statements::UpdateStatement;
+use surrealdb::sql::{to_value, Data};
+use surrealdb::{Connection, Surreal};
 
 #[derive(Debug, Clone, Default)]
 pub struct UpdateBuilder<T, D, C> {
@@ -61,7 +60,6 @@ impl UpdateBuilder<NoWhat, NoData, NoCond> {
 }
 
 impl UpdateBuilder<FilledWhat, NoData, NoCond> {
-
     /// This function is for `SET` || `UNSET` || `MERGE` and more
     pub fn data(self, data: impl Into<ExtraData>) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
         let Self { mut statement, .. } = self;
@@ -91,7 +89,10 @@ impl UpdateBuilder<FilledWhat, NoData, NoCond> {
     ///  UpdateBuilder::new().what("test").set(vec![("test", Operator::Equal, "test"), ("test2", Operator::Equal, "test2")]);
     ///  // The above builder becomes `UPDATE test SET test = 'test', test2 = 'test2'
     ///
-    pub fn set(self, set: impl Into<SetExpression>) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
+    pub fn set(
+        self,
+        set: impl Into<SetExpression>,
+    ) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
         let Self { mut statement, .. } = self;
 
         let set = set.into().0;
@@ -119,7 +120,10 @@ impl UpdateBuilder<FilledWhat, NoData, NoCond> {
     /// UpdateBuilder::new().what("test").unset(vec!["test", "test"]);
     /// // The above builder becomes `UPDATE test UNSET test, test
     ///
-    pub fn unset(self, set: impl Into<UnsetExpression>) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
+    pub fn unset(
+        self,
+        set: impl Into<UnsetExpression>,
+    ) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
         let Self { mut statement, .. } = self;
 
         let set = set.into().0;
@@ -151,7 +155,10 @@ impl UpdateBuilder<FilledWhat, NoData, NoCond> {
     /// UpdateBuilder::new().what("test").content(Test { test: "test".to_string(), magic: true });
     ///     // The above builder becomes `UPDATE test CONTENT { test: "test", magic: true }
     ///
-    pub fn content(self, content: impl Serialize + 'static) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
+    pub fn content(
+        self,
+        content: impl Serialize + 'static,
+    ) -> UpdateBuilder<FilledWhat, FilledData, NoCond> {
         let Self { mut statement, .. } = self;
 
         let val = to_value(content).unwrap_or_default();
@@ -208,12 +215,13 @@ impl UpdateBuilder<FilledWhat, FilledData, NoCond> {
     /// ## The fastest way to query is to use the string format for conditions at least from benchmarks
     ///
     /// You can also use the Cond/Value type inside surrealdb for more complex requests
-    pub fn condition(self, cond: impl Into<ExtraCond>) -> UpdateBuilder<FilledWhat, FilledData, FilledCond> {
+    pub fn condition(
+        self,
+        cond: impl Into<ExtraCond>,
+    ) -> UpdateBuilder<FilledWhat, FilledData, FilledCond> {
         let Self { mut statement, .. } = self;
 
-        let cond = cond.into().0;
-
-        statement.cond = Some(cond);
+        statement.cond = cond.into().0;
 
         UpdateBuilder {
             statement,
@@ -296,15 +304,15 @@ impl<C> UpdateBuilder<FilledWhat, FilledData, C> {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use serde::Serialize;
     use surrealdb::opt::IntoQuery;
     use surrealdb::sql::Operator;
-    use serde::Serialize;
-    use super::*;
 
     #[derive(Serialize)]
     struct Test {
         test1: String,
-        test2: String
+        test2: String,
     }
 
     #[test]
@@ -318,7 +326,10 @@ mod test {
 
     #[test]
     fn update_builder_with_set_and_cond() {
-        let update = UpdateBuilder::new().what("test").set(vec![("test", Operator::Equal, "test")]).condition("test");
+        let update = UpdateBuilder::new()
+            .what("test")
+            .set(vec![("test", Operator::Equal, "test")])
+            .condition("test");
 
         let query = update.statement.into_query();
 
@@ -327,7 +338,10 @@ mod test {
 
     #[test]
     fn update_builder_with_unset_and_cond() {
-        let update = UpdateBuilder::new().what("test").unset(vec!["test", "test"]).condition("test");
+        let update = UpdateBuilder::new()
+            .what("test")
+            .unset(vec!["test", "test"])
+            .condition("test");
 
         let query = update.statement.into_query();
 
