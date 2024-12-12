@@ -209,6 +209,25 @@ impl SelectBuilder<FilledWhat, FilledFields, NoCond> {
             cond_state: Default::default(),
         }
     }
+
+    pub fn try_condition(
+        self,
+        cond: impl TryInto<ExtraCond>,
+    ) -> SelectBuilder<FilledWhat, FilledFields, FilledCond> {
+        let Self { mut statement, .. } = self;
+
+        match cond.try_into() {
+            Ok(cond) => statement.cond = Some(cond.0),
+            _ => statement.cond = None,
+        }
+
+        SelectBuilder {
+            statement,
+            what_state: Default::default(),
+            fields_state: Default::default(),
+            cond_state: Default::default(),
+        }
+    }
 }
 
 impl<C> SelectBuilder<FilledWhat, FilledFields, C> {
